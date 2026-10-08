@@ -1,0 +1,2057 @@
+<title>Trade Manager</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<style>
+/* ── Token System ── dark-first trading app */
+:root {
+  --bg:        #0d1117;
+  --surface:   #161b22;
+  --surface2:  #1c2333;
+  --border:    #30363d;
+  --muted:     #8b949e;
+  --fg:        #e6edf3;
+  --fg-dim:    #b1bac4;
+  --green:     #3fb950;
+  --green-dim: #1a3a22;
+  --red:       #f85149;
+  --red-dim:   #3d1a1a;
+  --gold:      #e3b341;
+  --gold-dim:  #3a2d0e;
+  --blue:      #58a6ff;
+  --blue-dim:  #0d2044;
+  --purple:    #bc8cff;
+
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg:        #f0f3f7;
+    --surface:   #ffffff;
+    --surface2:  #f6f8fa;
+    --border:    #d0d7de;
+    --muted:     #656d76;
+    --fg:        #1f2328;
+    --fg-dim:    #424a53;
+    --green:     #1a7f37;
+    --green-dim: #d4f0dc;
+    --red:       #cf222e;
+    --red-dim:   #fdd8d8;
+    --gold:      #9a6700;
+    --gold-dim:  #fdf3cc;
+    --blue:      #0969da;
+    --blue-dim:  #ddf4ff;
+    --purple:    #6639ba;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg:        #f0f3f7;
+  --surface:   #ffffff;
+  --surface2:  #f6f8fa;
+  --border:    #d0d7de;
+  --muted:     #656d76;
+  --fg:        #1f2328;
+  --fg-dim:    #424a53;
+  --green:     #1a7f37;
+  --green-dim: #d4f0dc;
+  --red:       #cf222e;
+  --red-dim:   #fdd8d8;
+  --gold:      #9a6700;
+  --gold-dim:  #fdf3cc;
+  --blue:      #0969da;
+  --blue-dim:  #ddf4ff;
+  --purple:    #6639ba;
+  color-scheme: light;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* ── App shell ── */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Top bar ── */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 10px;
+  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+.top-bar-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--fg);
+}
+.top-bar-sub {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+.live-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: pulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes pulse {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+/* ── Scrollable content ── */
+.screen {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 16px 80px;
+  display: none;
+  scrollbar-width: none;
+}
+.screen::-webkit-scrollbar { display: none; }
+.screen.active { display: block; }
+
+/* ── Bottom nav ── */
+.bottom-nav {
+  display: flex;
+  align-items: stretch;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+.nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 10px 0 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition: color 0.15s;
+}
+.nav-btn.active { color: var(--blue); }
+.nav-btn svg { width: 20px; height: 20px; }
+
+/* ── Section headers ── */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 20px 0 10px;
+}
+.section-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.section-badge {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--muted);
+  background: var(--surface2);
+  padding: 2px 7px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+}
+
+/* ── Balance hero ── */
+.balance-hero {
+  margin-top: 18px;
+  text-align: center;
+  padding: 0 0 4px;
+}
+.balance-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.balance-amount {
+  font-family: var(--font-mono);
+  font-size: 40px;
+  font-weight: 600;
+  color: var(--fg);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.balance-change {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  font-size: 13px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.balance-change.up { color: var(--green); }
+.balance-change.dn { color: var(--red); }
+
+/* ── Metric tiles ── */
+.tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 14px;
+}
+.tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.tile-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.tile-value {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  color: var(--fg);
+}
+.tile-value.green { color: var(--green); }
+.tile-value.red   { color: var(--red); }
+.tile-value.gold  { color: var(--gold); }
+.tile-value.blue  { color: var(--blue); }
+.tile-sub {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Open trade card ── */
+.trade-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  margin-top: 8px;
+}
+.trade-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.trade-symbol {
+  font-size: 15px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+.trade-side {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.trade-side.long  { background: var(--green-dim); color: var(--green); }
+.trade-side.short { background: var(--red-dim);   color: var(--red); }
+.trade-pnl {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 10px;
+}
+.trade-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+}
+.detail-item { }
+.detail-label {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.detail-val {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-dim);
+}
+
+/* ── SL/TP progress bar ── */
+.sltp-bar-wrap { margin-top: 10px; }
+.sltp-bar-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  margin-bottom: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.sltp-track {
+  height: 5px;
+  background: var(--surface2);
+  border-radius: 3px;
+  position: relative;
+  overflow: visible;
+}
+.sltp-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--green);
+  transition: width 0.4s ease;
+}
+.sltp-dot {
+  position: absolute;
+  top: 50%;
+  width: 10px; height: 10px;
+  background: var(--blue);
+  border: 2px solid var(--bg);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* ── Progress bars (targets) ── */
+.progress-row {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-top: 8px;
+}
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.progress-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg-dim);
+}
+.progress-pct {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--blue);
+  font-variant-numeric: tabular-nums;
+}
+.progress-track {
+  height: 6px;
+  background: var(--surface2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--blue);
+}
+.progress-fill.green { background: var(--green); }
+.progress-fill.gold  { background: var(--gold); }
+.progress-sub {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+  font-size: 10px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Equity chart wrapper ── */
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  margin-top: 8px;
+}
+.chart-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.chart-tab {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.chart-tab.active {
+  background: var(--blue-dim);
+  color: var(--blue);
+}
+.chart-container {
+  position: relative;
+  height: 120px;
+}
+
+/* ── Consecutive losses warning ── */
+.loss-warning {
+  background: var(--red-dim);
+  border: 1px solid var(--red);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.loss-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.loss-text .loss-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--red);
+}
+.loss-text .loss-sub {
+  font-size: 11px;
+  color: var(--fg-dim);
+  margin-top: 1px;
+}
+
+/* ── Deeper Look: metric groups ── */
+.metric-group {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+.metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.metric-row:last-child { border-bottom: none; }
+.metric-key {
+  font-size: 12px;
+  color: var(--fg-dim);
+  font-weight: 500;
+}
+.metric-val {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+.metric-val.green  { color: var(--green); }
+.metric-val.red    { color: var(--red); }
+.metric-val.gold   { color: var(--gold); }
+.metric-val.blue   { color: var(--blue); }
+.metric-val.purple { color: var(--purple); }
+
+/* ── Time analysis chart cards ── */
+.ta-chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  margin-top: 8px;
+}
+.ta-chart-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.ta-chart-container {
+  position: relative;
+  height: 140px;
+}
+
+/* ── Drawdown meter ── */
+.drawdown-meter {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-top: 8px;
+}
+.dd-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.dd-label { font-size: 12px; font-weight: 600; color: var(--fg-dim); }
+.dd-value {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.dd-track {
+  height: 8px;
+  background: var(--surface2);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.dd-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--green) 0%, var(--gold) 60%, var(--red) 100%);
+  transition: width 0.5s ease;
+}
+.dd-tick-marks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+
+/* ── "No open position" placeholder ── */
+.no-trade {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 14px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 8px;
+}
+.no-trade-icon { font-size: 24px; margin-bottom: 6px; opacity: 0.4; }
+
+/* ── Deeper Look btn ── */
+.deeper-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 16px;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: background 0.15s;
+  letter-spacing: 0.02em;
+}
+.deeper-btn:hover { background: var(--surface2); }
+.deeper-btn svg { width: 16px; height: 16px; }
+
+/* ── Scrollbar hidden everywhere ── */
+* { scrollbar-width: none; }
+*::-webkit-scrollbar { display: none; }
+
+/* ── Info Bottom Sheet ── */
+.info-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.info-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+.info-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%) translateY(100%);
+  width: 100%;
+  max-width: 430px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-radius: 16px 16px 0 0;
+  padding: 0 20px 32px;
+  z-index: 101;
+  transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.info-sheet.open {
+  transform: translateX(-50%) translateY(0);
+}
+.sheet-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 12px auto 16px;
+}
+.sheet-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: var(--blue-dim);
+  color: var(--blue);
+  margin-bottom: 10px;
+}
+.sheet-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--fg);
+  margin-bottom: 8px;
+  line-height: 1.3;
+}
+.sheet-body {
+  font-size: 13px;
+  color: var(--fg-dim);
+  line-height: 1.65;
+  margin-bottom: 14px;
+}
+.sheet-tip {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--blue);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--fg-dim);
+  line-height: 1.55;
+}
+.sheet-tip strong { color: var(--blue); }
+.info-tap {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.info-tap:active { opacity: 0.7; }
+
+/* ── Account info card ── */
+.account-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-top: 14px;
+}
+.account-logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--blue-dim);
+  border: 1px solid var(--blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--blue);
+  letter-spacing: -0.02em;
+}
+.account-info {
+  flex: 1;
+  min-width: 0;
+}
+.account-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.account-sub {
+  font-size: 10px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  margin-top: 1px;
+}
+.account-tags {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.account-tag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 20px;
+}
+.account-tag.demo { background: var(--gold-dim); color: var(--gold); }
+.account-tag.live { background: var(--green-dim); color: var(--green); }
+.account-tag.mt5  { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+</style>
+
+<div id="app">
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <div>
+      <div class="top-bar-title" id="screenTitle">Trade Manager</div>
+      <div class="top-bar-sub" id="serverTime">Server 20:12 · EST 16:12</div>
+    </div>
+    <div class="live-dot" id="liveDot" title="Live data"></div>
+  </div>
+
+  <!-- ═══════════════ SCREEN: HOME ═══════════════ -->
+  <div class="screen active" id="screen-home">
+
+    <!-- Balance hero -->
+    <div class="balance-hero">
+      <div class="balance-label">Account Balance</div>
+      <div class="balance-amount info-tap" onclick="openSheet('balance')">$11,340<span style="font-size:20px">.50</span></div>
+      <div class="balance-change up info-tap" id="balance-change" onclick="openSheet('pnl')">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 2l5 5H7v3H5V7H1l5-5z" fill="currentColor"/></svg>
+        <span id="balance-change-text">+$340.50 today &nbsp;(+3.09%)</span>
+      </div>
+    </div>
+
+    <!-- Account info card -->
+    <div class="account-card">
+      <div class="account-logo">AMP</div>
+      <div class="account-info">
+        <div class="account-name">AMP Futures</div>
+        <div class="account-sub">Acct #1601188 · MNQ Micro · 0.5% Margin</div>
+      </div>
+      <div class="account-tags">
+        <span class="account-tag demo">Demo</span>
+        <span class="account-tag mt5">MT5</span>
+      </div>
+    </div>
+
+    <!-- Mini equity chart -->
+    <div class="chart-card" style="margin-top:14px">
+      <div class="chart-tabs" style="flex-wrap:wrap;gap:4px 4px;">
+        <button class="chart-tab active" onclick="switchEquityTab('day',   this)">Day</button>
+        <button class="chart-tab"        onclick="switchEquityTab('week',  this)">Week</button>
+        <button class="chart-tab"        onclick="switchEquityTab('mtd',   this)">MTD</button>
+        <button class="chart-tab"        onclick="switchEquityTab('month', this)">Month</button>
+        <button class="chart-tab"        onclick="switchEquityTab('qtd',   this)">QTD</button>
+        <button class="chart-tab"        onclick="switchEquityTab('quarter',this)">Quarter</button>
+        <button class="chart-tab"        onclick="switchEquityTab('ytd',   this)">YTD</button>
+        <button class="chart-tab"        onclick="switchEquityTab('all',   this)">All Time</button>
+      </div>
+      <div class="chart-container">
+        <canvas id="equityChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Key tiles -->
+    <div class="tiles">
+      <div class="tile info-tap" onclick="openSheet('pnl')">
+        <div class="tile-label" id="tile-pnl-label">Today P&L</div>
+        <div class="tile-value green" id="tile-pnl">+$340</div>
+        <div class="tile-sub" id="tile-pnl-sub">3 trades · 2W 1L</div>
+      </div>
+      <div class="tile info-tap" onclick="openSheet('winrate')">
+        <div class="tile-label">Win Rate</div>
+        <div class="tile-value blue" id="tile-winrate">66.7%</div>
+        <div class="tile-sub" id="tile-winrate-sub">2 of 3 today</div>
+      </div>
+      <div class="tile info-tap" onclick="openSheet('trades')">
+        <div class="tile-label" id="tile-trades-label">Trades</div>
+        <div class="tile-value" id="tile-trades">3</div>
+        <div class="tile-sub" id="tile-trades-sub">Max 6 allowed</div>
+      </div>
+      <div class="tile info-tap" onclick="openSheet('consec')">
+        <div class="tile-label">Consec. Losses</div>
+        <div class="tile-value gold" id="tile-consec">1</div>
+        <div class="tile-sub" id="tile-consec-sub">Max 3 rule</div>
+      </div>
+    </div>
+
+    <!-- Drawdown meter -->
+    <div class="section-header" style="margin-top:18px">
+      <div class="section-title">Drawdown</div>
+      <div class="section-badge">Max 5%</div>
+    </div>
+    <div class="drawdown-meter info-tap" onclick="openSheet('drawdown')">
+      <div class="dd-header">
+        <span class="dd-label" id="dd-label">Drawdown (Day)</span>
+        <span class="dd-value" id="dd-value" style="color:var(--green)">-0.62%</span>
+      </div>
+      <div class="dd-track">
+        <div class="dd-fill" id="dd-fill" style="width:12.4%"></div>
+      </div>
+      <div class="dd-tick-marks">
+        <span>0%</span><span>1.25%</span><span>2.5%</span><span>3.75%</span><span>5%</span>
+      </div>
+    </div>
+
+    <!-- Open position -->
+    <div class="section-header">
+      <div class="section-title">Open Position</div>
+      <div class="section-badge">Live</div>
+    </div>
+    <div id="positionSection">
+    <div class="trade-card">
+      <div class="trade-card-header">
+        <span class="trade-symbol">MNQ / MNQU26</span>
+        <span class="trade-side long">Long</span>
+      </div>
+      <div class="trade-pnl info-tap" style="color:var(--green)" onclick="openSheet('openpnl')">+$118.75</div>
+      <div class="trade-details">
+        <div class="detail-item">
+          <div class="detail-label">Entry</div>
+          <div class="detail-val">19,842.25</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Current</div>
+          <div class="detail-val">19,937.75</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Size</div>
+          <div class="detail-val">1 micro</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Stop Loss</div>
+          <div class="detail-val" style="color:var(--red)">19,820.00</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Take Profit</div>
+          <div class="detail-val" style="color:var(--green)">20,034.50</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Duration</div>
+          <div class="detail-val">1h 22m</div>
+        </div>
+      </div>
+      <!-- SL–TP progress bar -->
+      <div class="sltp-bar-wrap info-tap" onclick="openSheet('sltp')">
+        <div class="sltp-bar-labels">
+          <span style="color:var(--red)">SL 19,820</span>
+          <span style="color:var(--muted)">Entry 19,842</span>
+          <span style="color:var(--green)">TP 20,034</span>
+        </div>
+        <div class="sltp-track">
+          <div class="sltp-fill" style="width:44%"></div>
+          <div class="sltp-dot" style="left:44%"></div>
+        </div>
+        <div style="text-align:center;margin-top:6px;font-size:10px;color:var(--blue);font-family:var(--font-mono);font-weight:600">44% to TP</div>
+      </div>
+    </div>
+    </div><!-- /positionSection -->
+
+    <!-- Weekly & Monthly targets -->
+    <div class="section-header">
+      <div class="section-title">Targets</div>
+    </div>
+
+    <div class="progress-row info-tap" onclick="openSheet('weekgoal')">
+      <div class="progress-header">
+        <span class="progress-name">Weekly Goal</span>
+        <span class="progress-pct" style="color:var(--green)">68%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill green" style="width:68%"></div>
+      </div>
+      <div class="progress-sub">
+        <span>$0</span>
+        <span>$680 / $1,000</span>
+      </div>
+    </div>
+
+    <div class="progress-row info-tap" onclick="openSheet('monthgoal')">
+      <div class="progress-header">
+        <span class="progress-name">Monthly Goal</span>
+        <span class="progress-pct" style="color:var(--gold)">28%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill gold" style="width:28%"></div>
+      </div>
+      <div class="progress-sub">
+        <span>$0</span>
+        <span>$1,120 / $4,000</span>
+      </div>
+    </div>
+
+    <!-- Deeper Look button -->
+    <button class="deeper-btn" onclick="switchScreen('deeper')">
+      <svg viewBox="0 0 16 16" fill="none"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 1.5a5.5 5.5 0 110 11 5.5 5.5 0 010-11zm0 2.5a.75.75 0 01.75.75V8H11a.75.75 0 010 1.5H8a.75.75 0 01-.75-.75V5.75A.75.75 0 018 5z" fill="currentColor"/><path d="M8 3a1 1 0 000 2V3z" fill="none"/><circle cx="8" cy="8" r="5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 5.5v2.75M8 9.75v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Deeper Look — Advanced Metrics
+    </button>
+
+  </div><!-- /screen-home -->
+
+
+  <!-- ═══════════════ SCREEN: DEEPER LOOK ═══════════════ -->
+  <div class="screen" id="screen-deeper">
+
+    <!-- Performance summary -->
+    <div class="section-header" style="margin-top:18px">
+      <div class="section-title">Performance</div>
+      <div class="section-badge">All Time</div>
+    </div>
+
+    <div class="metric-group">
+      <div class="metric-row info-tap" onclick="openSheet('profitfactor')">
+        <span class="metric-key">Profit Factor</span>
+        <span class="metric-val green">2.18</span>
+      </div>
+      <div class="metric-row info-tap" onclick="openSheet('recovery')">
+        <span class="metric-key">Recovery Factor</span>
+        <span class="metric-val blue">3.42</span>
+      </div>
+      <div class="metric-row info-tap" onclick="openSheet('sharpe')">
+        <span class="metric-key">Sharpe Ratio</span>
+        <span class="metric-val blue">1.87</span>
+      </div>
+      <div class="metric-row info-tap" onclick="openSheet('payoff')">
+        <span class="metric-key">Expected Payoff</span>
+        <span class="metric-val green">+$47.20</span>
+      </div>
+      <div class="metric-row info-tap" onclick="openSheet('winrate')">
+        <span class="metric-key">Win Rate</span>
+        <span class="metric-val green">64.3%</span>
+      </div>
+      <div class="metric-row info-tap" onclick="openSheet('pnl')">
+        <span class="metric-key">Total Net P&L</span>
+        <span class="metric-val green">+$1,340.50</span>
+      </div>
+    </div>
+
+    <!-- Drawdown deep -->
+    <div class="section-header">
+      <div class="section-title">Drawdown</div>
+    </div>
+    <div class="metric-group">
+      <div class="metric-row info-tap" onclick="openSheet('absdd')">
+        <span class="metric-key">Absolute Drawdown</span>
+        <span class="metric-val gold">$62.00</span>
+      </div>
+      <div class="metric-row info-tap" onclick="openSheet('maxdd')">
+        <span class="metric-key">Max Drawdown ($)</span>
+        <span class="metric-val red">-$412.50</span>
+      </div>
+      <div class="metric-row info-tap" onclick="openSheet('maxdd')">
+        <span class="metric-key">Max Drawdown (%)</span>
+        <span class="metric-val red">-3.90%</span>
+      </div>
+      <div class="metric-row info-tap" onclick="openSheet('reldd')">
+        <span class="metric-key">Relative Drawdown</span>
+        <span class="metric-val red">-4.1%</span>
+      </div>
+    </div>
+
+    <!-- Streak & timing -->
+    <div class="section-header">
+      <div class="section-title">Streaks</div>
+    </div>
+    <div class="metric-group">
+      <div class="metric-row info-tap" onclick="openSheet('beststreak')">
+        <span class="metric-key">Best Consec. Wins</span>
+        <span class="metric-val green">7 (+$512)</span>
+      </div>
+      <div class="metric-row info-tap" onclick="openSheet('worststreak')">
+        <span class="metric-key">Worst Consec. Losses</span>
+        <span class="metric-val red">3 (-$187)</span>
+      </div>
+      <div class="metric-row info-tap" onclick="openSheet('largestwin')">
+        <span class="metric-key">Largest Win</span>
+        <span class="metric-val green">+$218.75</span>
+      </div>
+      <div class="metric-row info-tap" onclick="openSheet('largestloss')">
+        <span class="metric-key">Largest Loss</span>
+        <span class="metric-val red">-$93.75</span>
+      </div>
+      <div class="metric-row info-tap" onclick="openSheet('avgwinloss')">
+        <span class="metric-key">Avg Win / Avg Loss</span>
+        <span class="metric-val purple">$104 / $48</span>
+      </div>
+    </div>
+
+    <!-- Hold time -->
+    <div class="section-header">
+      <div class="section-title">Hold Time</div>
+    </div>
+    <div class="metric-group">
+      <div class="metric-row info-tap" onclick="openSheet('avghold')">
+        <span class="metric-key">Average</span>
+        <span class="metric-val">1h 38m</span>
+      </div>
+      <div class="metric-row info-tap" onclick="openSheet('shortest')">
+        <span class="metric-key">Shortest</span>
+        <span class="metric-val">4m</span>
+      </div>
+      <div class="metric-row info-tap" onclick="openSheet('longest')">
+        <span class="metric-key">Longest</span>
+        <span class="metric-val">4h 52m</span>
+      </div>
+    </div>
+
+    <!-- TIME ANALYSIS CHARTS -->
+    <div class="section-header">
+      <div class="section-title">Entries by Hour</div>
+    </div>
+    <div class="ta-chart-card info-tap" onclick="openSheet('entryhr')">
+      <div class="ta-chart-title">Trades entered per hour (EST)</div>
+      <div class="ta-chart-container">
+        <canvas id="hourChart"></canvas>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <div class="section-title">P&L by Hour</div>
+    </div>
+    <div class="ta-chart-card info-tap" onclick="openSheet('pnlhr')">
+      <div class="ta-chart-title">Net P&L per hour of day (EST)</div>
+      <div class="ta-chart-container">
+        <canvas id="hourPnlChart"></canvas>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <div class="section-title">P&L by Day of Week</div>
+    </div>
+    <div class="ta-chart-card info-tap" onclick="openSheet('pnldow')">
+      <div class="ta-chart-title">Net P&L per trading day</div>
+      <div class="ta-chart-container">
+        <canvas id="dowChart"></canvas>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <div class="section-title">P&L by Month</div>
+    </div>
+    <div class="ta-chart-card info-tap" onclick="openSheet('pnlmonth')">
+      <div class="ta-chart-title">Monthly net P&L (2026)</div>
+      <div class="ta-chart-container">
+        <canvas id="monthChart"></canvas>
+      </div>
+    </div>
+
+    <div style="height:16px"></div>
+  </div><!-- /screen-deeper -->
+
+  <!-- ── Info Bottom Sheet ── -->
+  <div class="info-overlay" id="infoOverlay" onclick="closeSheet()"></div>
+  <div class="info-sheet" id="infoSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-badge" id="sheetBadge">Metric</div>
+    <div class="sheet-title" id="sheetTitle">—</div>
+    <div class="sheet-body" id="sheetBody">—</div>
+    <div class="sheet-tip" id="sheetTip"></div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <button class="nav-btn active" id="nav-home" onclick="switchScreen('home')">
+      <svg viewBox="0 0 20 20" fill="none"><path d="M3 9.5L10 3l7 6.5V17a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M7 18v-6h6v6" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+      Dashboard
+    </button>
+    <button class="nav-btn" id="nav-deeper" onclick="switchScreen('deeper')">
+      <svg viewBox="0 0 20 20" fill="none"><rect x="3" y="10" width="3" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="8.5" y="6" width="3" height="11" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="3" width="3" height="14" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>
+      Analytics
+    </button>
+  </div>
+</div>
+
+<script>
+// ── Metric info definitions ──
+const INFO = {
+  balance: {
+    badge: 'Account',
+    title: 'Account Balance',
+    body: 'Your total account equity right now — starting capital plus all realized and unrealized profits and losses. This is the number that matters most: it\'s what you could walk away with if you closed everything today.',
+    tip: '<strong>Watch it daily.</strong> A healthy equity curve trends up gradually with controlled dips. Sharp drops are a signal to stop trading and review your rules.'
+  },
+  pnl: {
+    badge: 'P&L',
+    title: 'Profit & Loss',
+    body: 'The net dollar gain or loss for the selected time window — after commissions and fees. Positive means you made money; negative means you lost it. The percentage shows that gain/loss relative to your account balance at the start of the period.',
+    tip: '<strong>Context matters.</strong> A $340 day looks great on a $5k account (6.8%) but is small on a $100k account (0.34%). Always read P&L alongside the percentage.'
+  },
+  winrate: {
+    badge: 'Win Rate',
+    title: 'Win Rate',
+    body: 'The percentage of your closed trades that ended in profit. 50% means you won half your trades. Higher is not always better — a 40% win rate with a great risk/reward ratio can be more profitable than a 70% win rate with a bad one.',
+    tip: '<strong>Pair it with your R:R ratio.</strong> If your average win is 2× your average loss, you only need a 34% win rate to be profitable long-term.'
+  },
+  trades: {
+    badge: 'Volume',
+    title: 'Trade Count',
+    body: 'How many trades you\'ve completed in this time window. More trades isn\'t always better — overtrading (revenge trading, FOMO entries) is one of the most common ways traders blow accounts.',
+    tip: '<strong>Stick to your plan.</strong> If you have a daily max of 6 trades, that limit exists to protect you. Hitting it before noon usually means your edge isn\'t working today — step away.'
+  },
+  consec: {
+    badge: 'Risk',
+    title: 'Consecutive Losses',
+    body: 'The number of losing trades in a row right now, without a winner in between. This is your most important real-time risk signal. Consecutive losses often mean your setup isn\'t working in current market conditions.',
+    tip: '<strong>Your rule: stop at 3.</strong> Three consecutive losses is a hard stop for the day. Markets change character — what worked yesterday may not work today. Live to trade another day.'
+  },
+  drawdown: {
+    badge: 'Risk',
+    title: 'Drawdown',
+    body: 'How far your account has dropped from its recent peak, expressed as a percentage. A 5% drawdown means your account is currently 5% below the highest point it reached in this window. This is the single most important risk metric for a futures trader.',
+    tip: '<strong>Your max is 5%.</strong> Hitting 5% means stop trading for the day — no exceptions. The bar turns red as you approach it. Protecting capital is always more important than chasing a comeback.'
+  },
+  profitfactor: {
+    badge: 'Performance',
+    title: 'Profit Factor',
+    body: 'Total gross profit divided by total gross loss. A profit factor of 2.18 means you earned $2.18 for every $1.00 you lost. Anything above 1.0 means you\'re net profitable. Professional traders typically target 1.5 or higher.',
+    tip: '<strong>Above 2.0 is excellent.</strong> Below 1.0 means you\'re losing money overall. If your PF drops below 1.3, it\'s time to review your strategy or reduce size.'
+  },
+  recovery: {
+    badge: 'Performance',
+    title: 'Recovery Factor',
+    body: 'Net profit divided by maximum drawdown. A recovery factor of 3.42 means you made $3.42 in net profit for every $1.00 of your worst drawdown. It measures how efficiently you recover from losing periods.',
+    tip: '<strong>Higher is better.</strong> A recovery factor above 3.0 means your strategy bounces back well. Below 1.0 means your losses are outpacing your ability to recover.'
+  },
+  sharpe: {
+    badge: 'Performance',
+    title: 'Sharpe Ratio',
+    body: 'A measure of risk-adjusted returns — how much profit you\'re generating per unit of risk taken. It compares your returns to the volatility of those returns. A higher Sharpe means smoother, more consistent profits.',
+    tip: '<strong>1.0+ is good, 2.0+ is great.</strong> Below 1.0 means your results are too volatile relative to your gains. A negative Sharpe means you\'re taking on risk without getting paid for it.'
+  },
+  payoff: {
+    badge: 'Performance',
+    title: 'Expected Payoff',
+    body: 'The average profit or loss you can expect per trade, accounting for both win rate and average size of wins and losses. This is what your strategy is "worth" per trade on average. Calculated as: (Win Rate × Avg Win) − (Loss Rate × Avg Loss).',
+    tip: '<strong>Positive is all you need.</strong> A $47 expected payoff means every trade you take is mathematically worth $47 to your account on average, even accounting for the losses.'
+  },
+  absdd: {
+    badge: 'Drawdown',
+    title: 'Absolute Drawdown',
+    body: 'How far your account is currently below your initial starting balance — not from a recent peak, but from day one. A small absolute drawdown means you\'ve never dipped below where you started, even briefly.',
+    tip: '<strong>Keep this at zero.</strong> If your absolute drawdown is rising, you\'re trading with a depleted account. It\'s a signal to reduce size until you\'re back above your starting balance.'
+  },
+  maxdd: {
+    badge: 'Drawdown',
+    title: 'Max Drawdown',
+    body: 'The single largest peak-to-trough drop your account has ever experienced — the worst losing streak you\'ve actually lived through. This is the stress test of your strategy and your psychology.',
+    tip: '<strong>Know your number.</strong> If your max drawdown was -$412 (3.9%), could you handle a -$800 drawdown without panic-closing or revenge trading? Size your positions so the answer is yes.'
+  },
+  reldd: {
+    badge: 'Drawdown',
+    title: 'Relative Drawdown',
+    body: 'The maximum drawdown expressed as a percentage of your account at the time of the peak — not your current balance. It\'s the most accurate way to compare drawdowns across different account sizes and time periods.',
+    tip: '<strong>This is the industry standard.</strong> Prop firms and fund managers use relative drawdown to evaluate traders. Keeping it under 5% is considered professional-grade risk management.'
+  },
+  beststreak: {
+    badge: 'Streaks',
+    title: 'Best Consecutive Wins',
+    body: 'Your longest winning streak — the most trades in a row you\'ve won without a loss in between. Streaks can build confidence, but be careful: a long win streak can lead to overconfidence and oversizing on the trade that finally loses.',
+    tip: '<strong>Stay disciplined on streaks.</strong> Many traders blow up right after their best streak because they start taking bigger risks. Keep your position size consistent no matter how hot you\'re running.'
+  },
+  worststreak: {
+    badge: 'Streaks',
+    title: 'Worst Consecutive Losses',
+    body: 'Your longest losing streak — the most trades in a row you\'ve lost. This is the hardest psychological test in trading. It\'s normal to have losing streaks even with a profitable strategy.',
+    tip: '<strong>3 in a row = stop for the day.</strong> Your rule limits you to 3 consecutive losses. That rule exists because this number shows it\'s possible. Losing streaks end, but only if you\'re still in the game.'
+  },
+  largestwin: {
+    badge: 'Trades',
+    title: 'Largest Single Win',
+    body: 'The biggest profit you\'ve made in a single trade. Large outlier wins can skew your average and make your strategy look better than it is. Check whether removing your top 3 wins still leaves you profitable.',
+    tip: '<strong>Don\'t chase it.</strong> If your largest win came from holding longer than planned or sizing up on a hunch, it\'s not repeatable. Focus on consistent, plan-based execution.'
+  },
+  largestloss: {
+    badge: 'Trades',
+    title: 'Largest Single Loss',
+    body: 'The biggest loss you\'ve taken in a single trade. This number should be controlled and predictable — a result of your stop loss being hit, not a blown stop or a position held through a news spike.',
+    tip: '<strong>Losses should never surprise you.</strong> If your largest loss is much bigger than your typical stop loss target, you had at least one trade where risk wasn\'t controlled. Investigate why.'
+  },
+  avgwinloss: {
+    badge: 'Trades',
+    title: 'Avg Win / Avg Loss (R:R)',
+    body: 'Your average winning trade size versus your average losing trade size. This is your real-world risk/reward ratio. If your average win is $104 and average loss is $48, your actual R:R is about 2.2:1 — you make more than twice as much when you win as you lose when you lose.',
+    tip: '<strong>This plus win rate = everything.</strong> Keep your average win larger than your average loss and you have a mathematical edge. If this ratio flips (avg loss > avg win), you need to review your exits immediately.'
+  },
+  avghold: {
+    badge: 'Timing',
+    title: 'Average Hold Time',
+    body: 'How long you typically stay in a trade from entry to exit. This reflects your trading style — scalpers hold for minutes, swing traders for hours or days. Consistency here is a sign of disciplined, plan-based execution.',
+    tip: '<strong>Match your style to your plan.</strong> If your avg hold is 1h 38m but your strategy targets 30-minute moves, you may be holding winners too long or sitting in losers hoping they come back.'
+  },
+  shortest: {
+    badge: 'Timing',
+    title: 'Shortest Hold Time',
+    body: 'The quickest trade you\'ve ever closed. Very short holds (under 5 minutes) can indicate panic exits — closing a trade before your stop or target is reached because of fear or noise. They can also be intentional scalps.',
+    tip: '<strong>Ask why.</strong> If your shortest holds are losers, you may be exiting winning setups too early. If they\'re winners, you may have scalped out of a trade that could have run much further.'
+  },
+  longest: {
+    badge: 'Timing',
+    title: 'Longest Hold Time',
+    body: 'The trade you stayed in the longest. Extended holds in futures can be risky due to overnight margin requirements and gap risk — the market can open sharply against you. Know whether this was planned or an accidental overnight hold.',
+    tip: '<strong>Overnight risk in futures is real.</strong> MNQ and MES trade nearly 24/5, but liquidity drops sharply after 5pm EST. If you hold overnight, make sure your stop is set and your margin can handle a gap.'
+  },
+  entryhr: {
+    badge: 'Timing',
+    title: 'Entries by Hour',
+    body: 'How many trades you enter at each hour of the day (EST). This reveals your trading patterns and which sessions you\'re most active in. The US equity open (9:30am EST) and early afternoon (1-2pm) are typically the highest-volume, highest-volatility periods.',
+    tip: '<strong>Find your best hours.</strong> Cross-reference this with your P&L by Hour chart. If you enter a lot of trades at 11am but barely make money then, consider avoiding that window.'
+  },
+  pnlhr: {
+    badge: 'Timing',
+    title: 'P&L by Hour',
+    body: 'Your total net profit or loss for each hour of the trading day. This is one of the most actionable charts in the app — it shows you exactly when your edge is strongest and when you should be sitting on your hands.',
+    tip: '<strong>Trade your best hours.</strong> If 10am–11am consistently generates most of your profits, that\'s your golden window. Consider only trading during those hours until your win rate in other sessions improves.'
+  },
+  pnldow: {
+    badge: 'Timing',
+    title: 'P&L by Day of Week',
+    body: 'Your net profit or loss broken down by day of the week. Some traders are consistently profitable on certain days and consistently lose on others. Market character changes throughout the week — Mondays can be choppy, Fridays can be thin.',
+    tip: '<strong>Skip your worst days.</strong> If Tuesdays are consistently red for you, that\'s data — not a coincidence. Consider sitting out on bad-day patterns until you understand why they\'re happening.'
+  },
+  pnlmonth: {
+    badge: 'Timing',
+    title: 'P&L by Month',
+    body: 'Your total net profit or loss for each calendar month. This is the highest-level view of your trading career. Monthly consistency — making money in most months — is the hallmark of a professional trader.',
+    tip: '<strong>A red month isn\'t a failure.</strong> Even professional traders have losing months. What matters is how small those losses are compared to your winning months. That\'s what your profit factor measures.'
+  },
+  openpnl: {
+    badge: 'Live',
+    title: 'Open Trade P&L',
+    body: 'Your unrealized profit or loss on the position currently open — what you\'d receive if you closed it right now, before commissions. This number updates tick by tick and should be watched calmly, not anxiously.',
+    tip: '<strong>Let your plan run.</strong> Your stop loss and take profit are already set. Watching open P&L fluctuate and closing early is one of the biggest profit killers. Trust your levels.'
+  },
+  sltp: {
+    badge: 'Live',
+    title: 'SL / TP Progress Bar',
+    body: 'A visual showing where the current price sits between your stop loss (left, red) and take profit (right, green), with the entry price marked. The blue dot shows current price. The percentage shows how far to your take profit target.',
+    tip: '<strong>44% to TP means you\'re past your entry.</strong> The trade is in profit and moving in your direction. The goal now is to let it reach your planned target rather than closing early for a smaller win.'
+  },
+  weekgoal: {
+    badge: 'Targets',
+    title: 'Weekly Goal',
+    body: 'How much of your weekly profit target you\'ve reached. Goals give your trading purpose and help you know when to stop adding risk once you\'re up. Once you hit 100%, consider reducing size or stopping for the week to protect the gain.',
+    tip: '<strong>Goals protect profits.</strong> If you hit your weekly goal by Wednesday, the smart move is often to trade smaller or stop entirely. Most traders give back weekly gains by continuing to trade aggressively after hitting their target.'
+  },
+  monthgoal: {
+    badge: 'Targets',
+    title: 'Monthly Goal',
+    body: 'How much of your monthly profit target you\'ve reached. Monthly goals help you stay patient — you don\'t need to make all your money in one week. They also help you know when you\'ve done enough for the month.',
+    tip: '<strong>Compound it.</strong> A consistent $4,000/month on a $10k account is 40% monthly growth. If you achieve it, consider increasing position size slightly next month — that\'s how accounts compound.'
+  }
+};
+
+function openSheet(key) {
+  const info = INFO[key];
+  if (!info) return;
+  document.getElementById('sheetBadge').textContent = info.badge;
+  document.getElementById('sheetTitle').textContent = info.title;
+  document.getElementById('sheetBody').textContent = info.body;
+  document.getElementById('sheetTip').innerHTML = info.tip;
+  document.getElementById('infoOverlay').classList.add('open');
+  document.getElementById('infoSheet').classList.add('open');
+}
+
+function closeSheet() {
+  document.getElementById('infoOverlay').classList.remove('open');
+  document.getElementById('infoSheet').classList.remove('open');
+}
+
+// Close on swipe down
+(function(){
+  let startY = 0;
+  document.getElementById('infoSheet')?.addEventListener('touchstart', e => { startY = e.touches[0].clientY; }, {passive:true});
+  document.getElementById('infoSheet')?.addEventListener('touchend', e => {
+    if (e.changedTouches[0].clientY - startY > 60) closeSheet();
+  }, {passive:true});
+})();
+
+// ── Screen navigation ──
+function switchScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+  document.getElementById('nav-' + id).classList.add('active');
+  const titles = { home: 'Trade Manager', deeper: 'Advanced Analytics' };
+  document.getElementById('screenTitle').textContent = titles[id] || 'Trade Manager';
+}
+
+// ── Server time clock ──
+function updateClock() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const serverDate = new Date(now.getTime() + (4 * 60 + now.getTimezoneOffset()) * 60000);
+  const estDate    = new Date(now.getTime() - (4 * 60 - now.getTimezoneOffset()) * 60000 - now.getTimezoneOffset()*60000);
+  document.getElementById('serverTime').textContent =
+    `Server ${pad(serverDate.getHours())}:${pad(serverDate.getMinutes())} · EST ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+}
+updateClock();
+setInterval(updateClock, 15000);
+
+// ── Theme helper ──
+function getThemeColors() {
+  const style = getComputedStyle(document.documentElement);
+  const g = v => style.getPropertyValue(v).trim();
+  return { green:g('--green'), red:g('--red'), gold:g('--gold'), blue:g('--blue'),
+           purple:g('--purple'), muted:g('--muted'), surface:g('--surface'),
+           surface2:g('--surface2'), fg:g('--fg'), fgDim:g('--fg-dim'),
+           border:g('--border'), bg:g('--bg') };
+}
+
+Chart.defaults.font.family = "'JetBrains Mono', 'Courier New', monospace";
+Chart.defaults.color = '#8b949e';
+
+// ── Per-timeframe data ──
+// equity: balance curve for that window
+// pnl/winRate/trades/consec: tile values
+// ddVal/ddPct/ddColor: drawdown meter
+// ddLbl: drawdown label
+// pnlColor: tile color class
+const TF = {
+  day: {
+    labels:  ['9:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00'],
+    equity:  [11000, 10960, 11085, 11120, 11200, 11180, 11290, 11340],
+    pnlLbl:  'Today P&L',
+    pnl:     '+$340', pnlPct: '+3.09%', pnlUp: true,
+    pnlSub:  '3 trades · 2W 1L', pnlColor: 'green',
+    winRate: '66.7%', winSub: '2 of 3 today',
+    trLbl:   'Today Trades', trades: '3', trSub: 'Max 6 allowed',
+    consec:  '1', consecSub: 'Max 3 rule',
+    ddLbl:   'Drawdown (Day)', ddVal: '-0.62%', ddPct: 12.4,
+    ddStyle: 'color:var(--green)',
+  },
+  week: {
+    labels:  ['Mon','Tue','Wed','Thu','Fri','Today'],
+    equity:  [10660, 10745, 10600, 10870, 11240, 11340],
+    pnlLbl:  'Week P&L',
+    pnl:     '+$680', pnlPct: '+6.40%', pnlUp: true,
+    pnlSub:  '21 trades · 13W 8L', pnlColor: 'green',
+    winRate: '61.9%', winSub: '13 of 21 this week',
+    trLbl:   'Week Trades', trades: '21', trSub: 'This week',
+    consec:  '1', consecSub: 'Max 3 rule',
+    ddLbl:   'Drawdown (Week)', ddVal: '-1.18%', ddPct: 23.6,
+    ddStyle: 'color:var(--gold)',
+  },
+  month: {
+    labels:  ['Oct 1','Oct 2','Oct 3'],
+    equity:  [10220, 10780, 11340],
+    pnlLbl:  'Month P&L',
+    pnl:     '+$1,120', pnlPct: '+10.96%', pnlUp: true,
+    pnlSub:  '47 trades · 30W 17L', pnlColor: 'green',
+    winRate: '63.8%', winSub: '30 of 47 this month',
+    trLbl:   'Month Trades', trades: '47', trSub: 'This month',
+    consec:  '1', consecSub: 'Max 3 rule',
+    ddLbl:   'Drawdown (Month)', ddVal: '-2.14%', ddPct: 42.8,
+    ddStyle: 'color:var(--gold)',
+  },
+  mtd: {
+    labels:  ['Oct 1','Oct 2','Oct 3'],
+    equity:  [10220, 10780, 11340],
+    pnlLbl:  'MTD P&L',
+    pnl:     '+$1,120', pnlPct: '+10.96%', pnlUp: true,
+    pnlSub:  '47 trades · 30W 17L', pnlColor: 'green',
+    winRate: '63.8%', winSub: '30 of 47 this month',
+    trLbl:   'MTD Trades', trades: '47', trSub: 'Month to date',
+    consec:  '1', consecSub: 'Max 3 rule',
+    ddLbl:   'Drawdown (MTD)', ddVal: '-2.14%', ddPct: 42.8,
+    ddStyle: 'color:var(--gold)',
+  },
+  qtd: {
+    labels:  ['Oct 1','Oct 2','Oct 3'],
+    equity:  [10220, 10780, 11340],
+    pnlLbl:  'QTD P&L',
+    pnl:     '+$1,120', pnlPct: '+10.96%', pnlUp: true,
+    pnlSub:  '47 trades · 30W 17L', pnlColor: 'green',
+    winRate: '63.8%', winSub: '30 of 47 this quarter',
+    trLbl:   'QTD Trades', trades: '47', trSub: 'Quarter to date',
+    consec:  '1', consecSub: 'Max 3 rule',
+    ddLbl:   'Drawdown (QTD)', ddVal: '-2.14%', ddPct: 42.8,
+    ddStyle: 'color:var(--gold)',
+  },
+  quarter: {
+    labels:  ['Jul','Aug','Sep','Oct'],
+    equity:  [10487, 11099, 11005, 11340],
+    pnlLbl:  'Q4 2026 P&L',
+    pnl:     '+$853', pnlPct: '+8.14%', pnlUp: true,
+    pnlSub:  '63 trades · 41W 22L', pnlColor: 'green',
+    winRate: '65.1%', winSub: '41 of 63 this quarter',
+    trLbl:   'Quarter Trades', trades: '63', trSub: 'Q4 2026',
+    consec:  '1', consecSub: 'Max 3 rule',
+    ddLbl:   'Drawdown (Q4)', ddVal: '-3.90%', ddPct: 78.0,
+    ddStyle: 'color:var(--red)',
+  },
+  ytd: {
+    labels:  ['Jun','Jul','Aug','Sep','Oct'],
+    equity:  [10000, 10487, 11099, 11005, 11340],
+    pnlLbl:  'YTD P&L',
+    pnl:     '+$1,340', pnlPct: '+13.41%', pnlUp: true,
+    pnlSub:  '87 trades · 56W 31L', pnlColor: 'green',
+    winRate: '64.3%', winSub: '56 of 87 year to date',
+    trLbl:   'YTD Trades', trades: '87', trSub: 'Year to date',
+    consec:  '1', consecSub: 'Current streak',
+    ddLbl:   'Drawdown (YTD)', ddVal: '-3.90%', ddPct: 78.0,
+    ddStyle: 'color:var(--red)',
+  },
+  all: {
+    labels:  ['Jun','Jul','Aug','Sep','Oct'],
+    equity:  [10000, 10487, 11099, 11005, 11340],
+    pnlLbl:  'All-Time P&L',
+    pnl:     '+$1,340', pnlPct: '+13.41%', pnlUp: true,
+    pnlSub:  '87 trades · 56W 31L', pnlColor: 'green',
+    winRate: '64.3%', winSub: '56 of 87 all time',
+    trLbl:   'Total Trades', trades: '87', trSub: 'Since Jun 2026',
+    consec:  '1', consecSub: 'Current streak',
+    ddLbl:   'Max Drawdown (Ever)', ddVal: '-3.90%', ddPct: 78.0,
+    ddStyle: 'color:var(--red)',
+  }
+};
+
+let equityChart = null;
+let currentTab = 'day';
+
+function buildEquityChart(tab) {
+  const c = getThemeColors();
+  const d = TF[tab];
+  const ctx = document.getElementById('equityChart').getContext('2d');
+  if (equityChart) equityChart.destroy();
+
+  const gradient = ctx.createLinearGradient(0, 0, 0, 120);
+  gradient.addColorStop(0, c.green + '33');
+  gradient.addColorStop(1, c.green + '00');
+
+  equityChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: d.labels,
+      datasets: [{
+        data: d.equity,
+        borderColor: c.green,
+        borderWidth: 2,
+        backgroundColor: gradient,
+        fill: true,
+        tension: 0.35,
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        pointHoverBackgroundColor: c.green,
+        pointHoverBorderColor: c.bg,
+        pointHoverBorderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 250 },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: c.surface2,
+          borderColor: c.border,
+          borderWidth: 1,
+          titleColor: c.muted,
+          bodyColor: c.fg,
+          padding: 10,
+          displayColors: false,
+          callbacks: {
+            title: items => d.labels[items[0].dataIndex],
+            label: item => {
+              const val = item.parsed.y;
+              const idx = item.dataIndex;
+              const prev = idx > 0 ? d.equity[idx - 1] : d.equity[0];
+              const delta = val - prev;
+              const sign = delta >= 0 ? '+' : '';
+              const bal = '$' + val.toLocaleString('en-US', {minimumFractionDigits:2});
+              const chg = sign + '$' + Math.abs(delta).toLocaleString('en-US', {minimumFractionDigits:2});
+              return [`Balance: ${bal}`, `Change:  ${chg}`];
+            }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: c.muted, font: { size: 10 } } },
+        y: {
+          grid: { color: c.border + '44' },
+          ticks: { color: c.muted, font: { size: 10 }, callback: v => '$' + (v/1000).toFixed(1) + 'k' },
+          border: { display: false }
+        }
+      }
+    }
+  });
+}
+
+function updateMetrics(tab) {
+  const d = TF[tab];
+
+  // Balance change line
+  const svg = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="${d.pnlUp ? 'M6 2l5 5H7v3H5V7H1l5-5z' : 'M6 10L1 5h4V2h2v3h4L6 10z'}" fill="currentColor"/></svg>`;
+  const bc = document.getElementById('balance-change');
+  bc.className = 'balance-change info-tap ' + (d.pnlUp ? 'up' : 'dn');
+  bc.innerHTML = svg + `<span id="balance-change-text">${d.pnl} (${d.pnlPct})</span>`;
+  bc.onclick = () => openSheet('pnl');
+
+  // Tiles
+  const setEl = (id, txt) => { const el = document.getElementById(id); if(el) el.textContent = txt; };
+  setEl('tile-pnl-label', d.pnlLbl);
+  const pnlEl = document.getElementById('tile-pnl');
+  if(pnlEl) { pnlEl.textContent = d.pnl; pnlEl.className = 'tile-value ' + d.pnlColor; }
+  setEl('tile-pnl-sub', d.pnlSub);
+  setEl('tile-winrate', d.winRate);
+  setEl('tile-winrate-sub', d.winSub);
+  setEl('tile-trades-label', d.trLbl);
+  setEl('tile-trades', d.trades);
+  setEl('tile-trades-sub', d.trSub);
+  setEl('tile-consec', d.consec);
+  setEl('tile-consec-sub', d.consecSub);
+
+  // Drawdown
+  setEl('dd-label', d.ddLbl);
+  const ddv = document.getElementById('dd-value');
+  if(ddv) { ddv.textContent = d.ddVal; ddv.setAttribute('style', d.ddStyle); }
+  const ddf = document.getElementById('dd-fill');
+  if(ddf) ddf.style.width = d.ddPct + '%';
+}
+
+function switchEquityTab(tab, btn) {
+  currentTab = tab;
+  document.querySelectorAll('.chart-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  buildEquityChart(tab);
+  updateMetrics(tab);
+}
+
+// ── Hour of day charts ──
+const hours = ['6','7','8','9','10','11','12','13','14','15','16'];
+const entriesByHour = [0, 1, 3, 5, 8, 4, 2, 6, 7, 3, 1];
+const pnlByHour     = [0, -25, 45, 180, 310, 95, -40, 220, 275, 80, -15];
+
+let hourChart = null, hourPnlChart = null;
+function buildHourCharts() {
+  const c = getThemeColors();
+  const ctx1 = document.getElementById('hourChart').getContext('2d');
+  if (hourChart) hourChart.destroy();
+  hourChart = new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels: hours.map(h => h + ':00'),
+      datasets: [{
+        data: entriesByHour,
+        backgroundColor: c.blue + 'aa',
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: c.surface2, borderColor: c.border, borderWidth:1, bodyColor:c.fg, titleColor:c.muted }},
+      scales: {
+        x: { grid: { display:false }, ticks: { color:c.muted, font:{size:9} }},
+        y: { grid: { color: c.border+'44' }, ticks: { color:c.muted, font:{size:9}, stepSize:2 }, border:{display:false} }
+      }
+    }
+  });
+
+  const ctx2 = document.getElementById('hourPnlChart').getContext('2d');
+  if (hourPnlChart) hourPnlChart.destroy();
+  hourPnlChart = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: hours.map(h => h + ':00'),
+      datasets: [{
+        data: pnlByHour,
+        backgroundColor: pnlByHour.map(v => v >= 0 ? c.green + 'cc' : c.red + 'cc'),
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display:false }, tooltip: { backgroundColor:c.surface2, borderColor:c.border, borderWidth:1, bodyColor:c.fg, titleColor:c.muted, callbacks: { label: ctx => '$' + ctx.parsed.y }}},
+      scales: {
+        x: { grid: { display:false }, ticks: { color:c.muted, font:{size:9} }},
+        y: { grid: { color:c.border+'44' }, ticks: { color:c.muted, font:{size:9}, callback: v => '$'+v }, border:{display:false} }
+      }
+    }
+  });
+}
+
+// ── Day of week chart ──
+const dowDays = ['Mon','Tue','Wed','Thu','Fri'];
+const dowPnl  = [180, -65, 220, 310, 95];
+let dowChart = null;
+function buildDowChart() {
+  const c = getThemeColors();
+  const ctx = document.getElementById('dowChart').getContext('2d');
+  if (dowChart) dowChart.destroy();
+  dowChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: dowDays,
+      datasets: [{
+        data: dowPnl,
+        backgroundColor: dowPnl.map(v => v >= 0 ? c.green+'cc' : c.red+'cc'),
+        borderRadius: 5,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display:false }, tooltip: { backgroundColor:c.surface2, borderColor:c.border, borderWidth:1, bodyColor:c.fg, titleColor:c.muted, callbacks:{ label: ctx=>'$'+ctx.parsed.y }}},
+      scales: {
+        x: { grid:{ display:false }, ticks:{ color:c.muted, font:{size:10} }},
+        y: { grid:{ color:c.border+'44' }, ticks:{ color:c.muted, font:{size:9}, callback: v=>'$'+v }, border:{display:false} }
+      }
+    }
+  });
+}
+
+// ── Monthly chart ──
+const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct'];
+const monthPnl = [0, 0, 0, 0, 0, 218, 487, 612, -94, 118];
+let monthChart = null;
+function buildMonthChart() {
+  const c = getThemeColors();
+  const ctx = document.getElementById('monthChart').getContext('2d');
+  if (monthChart) monthChart.destroy();
+  monthChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: months,
+      datasets: [{
+        data: monthPnl,
+        backgroundColor: monthPnl.map(v => v > 0 ? c.gold+'cc' : v < 0 ? c.red+'cc' : c.muted+'44'),
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend:{ display:false }, tooltip:{ backgroundColor:c.surface2, borderColor:c.border, borderWidth:1, bodyColor:c.fg, titleColor:c.muted, callbacks:{ label: ctx=> ctx.parsed.y===0?'No trades':'$'+ctx.parsed.y }}},
+      scales: {
+        x: { grid:{ display:false }, ticks:{ color:c.muted, font:{size:9} }},
+        y: { grid:{ color:c.border+'44' }, ticks:{ color:c.muted, font:{size:9}, callback: v=>'$'+v }, border:{display:false} }
+      }
+    }
+  });
+}
+
+// ── Boot all charts ──
+window.addEventListener('DOMContentLoaded', () => {
+  buildEquityChart('day');
+  updateMetrics('day');
+  buildHourCharts();
+  buildDowChart();
+  buildMonthChart();
+  startLiveFeed();
+});
+
+// ═══════════════════════════════════════════════════════════
+// LIVE DATA — polls Google Apps Script proxy every 5 seconds
+// ═══════════════════════════════════════════════════════════
+const LIVE_URL = 'https://script.google.com/macros/s/AKfycbzJieQZb1QXXuCjabalAca66KnkJAIwmLHWcLgHka28S1TJ8EX8aPP1xpOrnxtid1IwIQ/exec';
+let liveData = null;
+let liveError = false;
+let liveTimer = null;
+
+function startLiveFeed() {
+  fetchLiveData();
+  liveTimer = setInterval(fetchLiveData, 5000);
+}
+
+function fetchLiveData() {
+  // JSONP — bypasses CORS restriction on Apps Script redirects
+  const callbackName = 'tmCallback_' + Date.now();
+  const script = document.createElement('script');
+
+  window[callbackName] = function(json) {
+    try {
+      liveData = json;
+      liveError = false;
+      applyLiveData(json);
+      setLiveDot(true);
+    } catch(e) {
+      console.warn('Live data parse error:', e.message);
+      setLiveDot(false);
+    } finally {
+      delete window[callbackName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+  };
+
+  // Timeout in case script never loads
+  const timeout = setTimeout(() => {
+    if (window[callbackName]) {
+      delete window[callbackName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+      setLiveDot(false);
+      console.warn('Live feed timeout');
+    }
+  }, 8000);
+
+  script.onerror = () => {
+    clearTimeout(timeout);
+    delete window[callbackName];
+    setLiveDot(false);
+    console.warn('Live feed script error');
+  };
+
+  script.src = LIVE_URL + '?callback=' + callbackName + '&t=' + Date.now();
+  document.head.appendChild(script);
+}
+
+function setLiveDot(online) {
+  const dot = document.getElementById('liveDot');
+  if (!dot) return;
+  dot.style.background = online ? 'var(--green)' : 'var(--red)';
+  dot.title = online ? 'Live data' : 'Feed offline';
+}
+
+function fmt$(n, decimals=2) {
+  if (n == null || isNaN(n)) return '—';
+  return '$' + Math.abs(n).toLocaleString('en-US', {minimumFractionDigits: decimals, maximumFractionDigits: decimals});
+}
+function fmtPct(n, decimals=2) {
+  if (n == null || isNaN(n)) return '—';
+  return (n >= 0 ? '+' : '') + n.toFixed(decimals) + '%';
+}
+function fmtSigned$(n) {
+  if (n == null || isNaN(n)) return '—';
+  return (n >= 0 ? '+$' : '-$') + Math.abs(n).toLocaleString('en-US', {minimumFractionDigits:2});
+}
+function fmtDuration(secs) {
+  if (!secs) return '—';
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  if (h > 0) return h + 'h ' + m + 'm';
+  return m + 'm';
+}
+
+function applyLiveData(d) {
+  const acct  = d.account  || {};
+  const wins  = d.windows  || {};
+  const pos   = d.positions || [];
+  const curve = d.equityCurve || [];
+  const hourly = d.hourly || [];
+  const dow    = d.dow    || [];
+  const monthly= d.monthly|| [];
+
+  // ── Balance hero ──
+  const bal = acct.balance;
+  if (bal != null) {
+    const balInt  = Math.floor(bal).toLocaleString('en-US');
+    const balDec  = (bal % 1).toFixed(2).slice(1); // ".50"
+    const balEl = document.querySelector('.balance-amount');
+    if (balEl) balEl.innerHTML = '$' + balInt + '<span style="font-size:20px">' + balDec + '</span>';
+  }
+
+  // ── Update TF object from live windows ──
+  const winMap = {
+    day:     wins.day,
+    week:    wins.week,
+    mtd:     wins.mtd,
+    month:   wins.month,
+    qtd:     wins.qtd,
+    quarter: wins.quarter,
+    ytd:     wins.ytd,
+    all:     wins.all
+  };
+
+  const tfLabels = {
+    day:     ['9:00','10:00','11:00','12:00','13:00','14:00','15:00','Close'],
+    week:    ['Mon','Tue','Wed','Thu','Fri','Today'],
+    mtd:     null,   // built from equityCurve
+    month:   null,
+    qtd:     null,
+    quarter: ['M1','M2','M3','Now'],
+    ytd:     null,
+    all:     null
+  };
+
+  // Build curve labels from equityCurve dates
+  const curveLabels = curve.map(pt => {
+    const dt = new Date(pt.date);
+    return (dt.getMonth()+1) + '/' + dt.getDate();
+  });
+  const curveEquity = curve.map(pt => pt.balance);
+
+  for (const [key, w] of Object.entries(winMap)) {
+    if (!w) continue;
+    const pnlUp  = (w.pnl || 0) >= 0;
+    const ddPct  = Math.min(Math.abs(w.maxDDPct || 0) / 5 * 100, 100);
+    const ddColor = ddPct < 40 ? 'color:var(--green)' : ddPct < 70 ? 'color:var(--gold)' : 'color:var(--red)';
+    const wins_  = w.wins   || 0;
+    const losses = w.losses || 0;
+    const trades = w.trades || 0;
+
+    // Equity curve for this window: use equityCurve filtered to window, or daily curve
+    let labels = tfLabels[key] || curveLabels;
+    let equity = curveEquity;
+    if (key === 'day') {
+      // Day curve: use static hour labels with just open + current
+      labels = ['Open', 'Now'];
+      const dayW = wins.day || {};
+      const startBal = (acct.balance || 0) - (dayW.pnl || 0);
+      equity = [startBal, acct.balance || startBal];
+    } else if (['week','mtd','month','qtd','quarter','ytd','all'].includes(key)) {
+      labels = curveLabels.length ? curveLabels : ['Start','Now'];
+      equity = curveEquity.length ? curveEquity : [(acct.balance||0) - (w.pnl||0), acct.balance||0];
+    }
+
+    TF[key] = {
+      labels,
+      equity,
+      pnlLbl:   key === 'day' ? 'Today P&L' : key.toUpperCase() + ' P&L',
+      pnl:      fmtSigned$(w.pnl),
+      pnlPct:   fmtPct(w.pnlPct),
+      pnlUp,
+      pnlSub:   trades + ' trades · ' + wins_ + 'W ' + losses + 'L',
+      pnlColor: pnlUp ? 'green' : 'red',
+      winRate:  (w.winRate || 0).toFixed(1) + '%',
+      winSub:   wins_ + ' of ' + trades + ' (' + key + ')',
+      trLbl:    key === 'day' ? 'Today Trades' : key.toUpperCase() + ' Trades',
+      trades:   String(trades),
+      trSub:    key === 'day' ? 'Max 6 allowed' : key + ' total',
+      consec:   String(acct.consecutiveLosses || 0),
+      consecSub:'Max 3 rule',
+      ddLbl:    'Drawdown (' + key.toUpperCase() + ')',
+      ddVal:    fmtPct(w.maxDDPct, 2),
+      ddPct,
+      ddStyle:  ddColor,
+    };
+  }
+
+  // Re-render current tab
+  if (currentTab && TF[currentTab]) {
+    buildEquityChart(currentTab);
+    updateMetrics(currentTab);
+  }
+
+  // ── Open positions ──
+  renderPositions(pos, acct);
+
+  // ── Analytics charts ──
+  if (hourly.length) {
+    const hLabels  = hourly.map(h => h.hour + ':00');
+    const hEntries = hourly.map(h => h.trades || 0);
+    const hPnl     = hourly.map(h => h.pnl || 0);
+    updateHourCharts(hLabels, hEntries, hPnl);
+  }
+  if (dow.length) {
+    const dLabels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const dPnl    = dow.map(d => d.pnl || 0);
+    const usedLabels = dow.map(d => dLabels[d.dow] || ('Day'+d.dow));
+    updateDowChart(usedLabels, dPnl);
+  }
+  if (monthly.length) {
+    const mNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const mLabels = monthly.map(m => mNames[(m.month||1)-1]);
+    const mPnl    = monthly.map(m => m.pnl || 0);
+    updateMonthChart(mLabels, mPnl);
+  }
+
+  // ── Deeper Look metrics (All-Time window) ──
+  const allW = wins.all || {};
+  applyDeeperMetrics(allW, acct);
+}
+
+function renderPositions(positions, acct) {
+  const section = document.querySelector('.screen.active #positionSection') ||
+                  document.getElementById('positionSection');
+  if (!section) return;
+
+  if (!positions || positions.length === 0) {
+    section.innerHTML = `
+      <div class="no-trade">
+        <div class="no-trade-icon">📭</div>
+        No open positions
+      </div>`;
+    return;
+  }
+
+  // Render first open position (expand later for multiple)
+  const p = positions[0];
+  const isLong  = (p.type || '').toLowerCase() === 'buy';
+  const pnlColor = (p.profit || 0) >= 0 ? 'var(--green)' : 'var(--red)';
+  const pnlStr   = fmtSigned$(p.profit);
+  const holdStr  = fmtDuration(p.holdSeconds);
+
+  // SL-TP progress
+  let sltpHTML = '';
+  if (p.sl && p.tp && p.openPrice) {
+    const prog = Math.max(0, Math.min(100, (p.slTpProgress || 0)));
+    sltpHTML = `
+      <div class="sltp-bar-wrap info-tap" onclick="openSheet('sltp')">
+        <div class="sltp-bar-labels">
+          <span style="color:var(--red)">SL ${(p.sl||0).toFixed(2)}</span>
+          <span style="color:var(--muted)">Entry ${(p.openPrice||0).toFixed(2)}</span>
+          <span style="color:var(--green)">TP ${(p.tp||0).toFixed(2)}</span>
+        </div>
+        <div class="sltp-track">
+          <div class="sltp-fill" style="width:${prog}%"></div>
+          <div class="sltp-dot" style="left:${prog}%"></div>
+        </div>
+        <div style="text-align:center;margin-top:6px;font-size:10px;color:var(--blue);font-family:var(--font-mono);font-weight:600">${prog.toFixed(0)}% to TP</div>
+      </div>`;
+  }
+
+  section.innerHTML = `
+    <div class="trade-card">
+      <div class="trade-card-header">
+        <span class="trade-symbol">${p.symbol || '—'}</span>
+        <span class="trade-side ${isLong ? 'long' : 'short'}">${isLong ? 'Long' : 'Short'}</span>
+      </div>
+      <div class="trade-pnl info-tap" style="color:${pnlColor}" onclick="openSheet('openpnl')">${pnlStr}</div>
+      <div class="trade-details">
+        <div class="detail-item">
+          <div class="detail-label">Entry</div>
+          <div class="detail-val">${(p.openPrice||0).toFixed(2)}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Current</div>
+          <div class="detail-val">${(p.currentPrice||0).toFixed(2)}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Size</div>
+          <div class="detail-val">${p.volume || 1} micro</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Stop Loss</div>
+          <div class="detail-val" style="color:var(--red)">${p.sl ? p.sl.toFixed(2) : '—'}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Take Profit</div>
+          <div class="detail-val" style="color:var(--green)">${p.tp ? p.tp.toFixed(2) : '—'}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Duration</div>
+          <div class="detail-val">${holdStr}</div>
+        </div>
+      </div>
+      ${sltpHTML}
+    </div>`;
+}
+
+function applyDeeperMetrics(w, acct) {
+  // Helper: find metric row by key text and update value
+  const setMetric = (keyText, value, colorClass) => {
+    document.querySelectorAll('.metric-row').forEach(row => {
+      const keyEl = row.querySelector('.metric-key');
+      if (keyEl && keyEl.textContent.trim() === keyText) {
+        const valEl = row.querySelector('.metric-val');
+        if (valEl) {
+          valEl.textContent = value;
+          if (colorClass) valEl.className = 'metric-val ' + colorClass;
+        }
+      }
+    });
+  };
+
+  setMetric('Profit Factor',       (w.profitFactor||0).toFixed(2),                   (w.profitFactor||0) >= 1.5 ? 'green' : 'gold');
+  setMetric('Win Rate',            (w.winRate||0).toFixed(1) + '%',                   (w.winRate||0) >= 55 ? 'green' : 'gold');
+  setMetric('Total Net P&L',       fmtSigned$(w.pnl),                                (w.pnl||0) >= 0 ? 'green' : 'red');
+  setMetric('Max Drawdown ($)',     fmtSigned$(w.largestLoss),                        'red');
+  setMetric('Max Drawdown (%)',     fmtPct(w.maxDDPct),                               'red');
+  setMetric('Best Consec. Wins',   String(w.bestStreak||0) + ' wins',                'green');
+  setMetric('Worst Consec. Losses',String(w.worstStreak||0) + ' losses',             'red');
+  setMetric('Largest Win',         fmtSigned$(w.largestWin),                         'green');
+  setMetric('Largest Loss',        fmtSigned$(w.largestLoss),                        'red');
+  setMetric('Avg Win / Avg Loss',  fmt$(w.avgWin) + ' / ' + fmt$(w.avgLoss),        'purple');
+}
+
+function updateHourCharts(labels, entries, pnl) {
+  const c = getThemeColors();
+  if (hourChart) {
+    hourChart.data.labels = labels;
+    hourChart.data.datasets[0].data = entries;
+    hourChart.update('none');
+  }
+  if (hourPnlChart) {
+    hourPnlChart.data.labels = labels;
+    hourPnlChart.data.datasets[0].data = pnl;
+    hourPnlChart.data.datasets[0].backgroundColor = pnl.map(v => v >= 0 ? c.green+'cc' : c.red+'cc');
+    hourPnlChart.update('none');
+  }
+}
+
+function updateDowChart(labels, pnl) {
+  const c = getThemeColors();
+  if (dowChart) {
+    dowChart.data.labels = labels;
+    dowChart.data.datasets[0].data = pnl;
+    dowChart.data.datasets[0].backgroundColor = pnl.map(v => v >= 0 ? c.green+'cc' : c.red+'cc');
+    dowChart.update('none');
+  }
+}
+
+function updateMonthChart(labels, pnl) {
+  const c = getThemeColors();
+  if (monthChart) {
+    monthChart.data.labels = labels;
+    monthChart.data.datasets[0].data = pnl;
+    monthChart.data.datasets[0].backgroundColor = pnl.map(v => v > 0 ? c.gold+'cc' : v < 0 ? c.red+'cc' : c.muted+'44');
+    monthChart.update('none');
+  }
+}
+</script>
